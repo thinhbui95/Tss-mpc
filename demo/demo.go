@@ -19,11 +19,11 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/test"
 	"github.com/bnb-chain/tss-lib/v2/tss"
+	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	common2 "github.com/ubiq/go-ubiq/common"
 )
 
 const (
@@ -234,13 +234,13 @@ keygen:
 
 }
 
-func testDistibutedSigning(message []byte) {
+func testDistibutedSigning(message common2.Hash) {
 	testThreshold := TestThreshold
 	testParticipants := TestParticipants
-	hash := crypto.Keccak256Hash(message)
+	//hash := crypto.Keccak256Hash(message)
 
 	z := new(big.Int)
-	z.SetBytes(hash.Bytes())
+	z.SetBytes(message.Bytes())
 
 	keys, signPIDs, err := LoadKeygenTestFixturesRandomSet(testThreshold+1, testParticipants)
 	if err != nil {
@@ -331,8 +331,6 @@ func testDistibutedSigning(message []byte) {
 					i.SetString(s, 16)
 					if sumS.Cmp(i) == -1 { // As per eip 2717
 						valid_s = true
-						fmt.Println("messageArray: ", message)
-						fmt.Println("messagetoSign: ", hash)
 						r := parties[0].Temp.Rx
 						fmt.Printf("sign result: R(%s, %s), r=%s\n", R.X().String(), R.Y().String(), r.String())
 						fmt.Printf("S: %s\n", sumS.String())
@@ -354,7 +352,7 @@ func testDistibutedSigning(message []byte) {
 						sig, _ := hex.DecodeString(r_sig + s_sig + v)
 						signatureNoRecoverID := sig[:len(sig)-1]
 						//Verify signature
-						verified := crypto.VerifySignature(publicKeyBytes, hash.Bytes(), signatureNoRecoverID)
+						verified := crypto.VerifySignature(publicKeyBytes, message.Bytes(), signatureNoRecoverID)
 						assert.True(nil, verified, "ecdsa verify must pass")
 
 						fmt.Println("Signature: ", hexutil.Encode(sig))
@@ -372,8 +370,11 @@ func testDistibutedSigning(message []byte) {
 }
 
 func main() {
-	message := []byte("hello world")
+	message := []byte("hello guy! Welcome to Vietnam")
+	hash := crypto.Keccak256Hash(message)
+	fmt.Println("messageArray: ", message)
+	fmt.Println("messagetoSign: ", hash)
 	testDistibutedKeyGeneration()
-	testDistibutedSigning(message)
+	testDistibutedSigning(hash)
 
 }
