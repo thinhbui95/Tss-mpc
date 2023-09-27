@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
@@ -330,7 +329,7 @@ func testDistibutedSigning(message []byte) {
 					s := "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0"
 					i := new(big.Int)
 					i.SetString(s, 16)
-					if sumS.Cmp(i) == -1 { // As per eip-1271
+					if sumS.Cmp(i) == -1 { // As per eip 2717
 						valid_s = true
 						fmt.Println("messageArray: ", message)
 						fmt.Println("messagetoSign: ", hash)
@@ -340,30 +339,25 @@ func testDistibutedSigning(message []byte) {
 						v := ""
 						if R.X().Cmp(tss.S256().Params().N) == 1 {
 							if R.Y().Int64()%2 == 0 {
-								v = "10"
+								v = "1d"
 							} else {
-								v = "11"
+								v = "1e"
 							}
 						} else {
 							if R.Y().Int64()%2 == 0 {
-								v = "00"
+								v = "1b"
 							} else {
-								v = "01"
+								v = "1c"
 							}
 						}
 
 						sig, _ := hex.DecodeString(r_sig + s_sig + v)
-						pubkey, err := crypto.Ecrecover(hash.Bytes(), sig)
-						if err != nil {
-							fmt.Println("error: ", err)
-						}
-						matches := bytes.Equal(pubkey, publicKeyBytes)
-						fmt.Println("match: ", matches)
-						fmt.Println("Signature: ", hexutil.Encode(sig))
-						fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(pubkey[1:])[12:]).Hex())
+						signatureNoRecoverID := sig[:len(sig)-1]
+						verified := crypto.VerifySignature(publicKeyBytes, hash.Bytes(), signatureNoRecoverID)
+						assert.True(nil, verified, "ecdsa verify must pass")
 
-						ok := ecdsa.Verify(&pk, z.Bytes(), R.X(), sumS)
-						assert.True(nil, ok, "ecdsa verify must pass")
+						fmt.Println("Signature: ", hexutil.Encode(sig))
+						fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 						fmt.Print("ECDSA signing test done.")
 
 					}
