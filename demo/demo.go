@@ -38,6 +38,10 @@ const (
 	testFixtureFileFormat = "keygen_data_%d.json"
 )
 
+var (
+	valid_s = false
+)
+
 func makeTestFixtureFilePath(partyIndex int) string {
 	_, callerFileName, _, _ := runtime.Caller(0)
 	srcDirName := filepath.Dir(callerFileName)
@@ -190,7 +194,7 @@ func testDistibutedKeyGeneration() {
 	var ended int32
 keygen:
 	for {
-		fmt.Printf("ACTIVE GOROUTINES: %d\n", runtime.NumGoroutine())
+		//fmt.Printf("ACTIVE GOROUTINES: %d\n", runtime.NumGoroutine())
 		select {
 		case err := <-errCh:
 			common.Logger.Errorf("Error: %s", err)
@@ -235,8 +239,6 @@ func testDistibutedSigning(message []byte) {
 	testThreshold := TestThreshold
 	testParticipants := TestParticipants
 	hash := crypto.Keccak256Hash(message)
-	fmt.Println("messageArray: ", message)
-	fmt.Println("messagetoSign: ", hash)
 
 	z := new(big.Int)
 	z.SetBytes(hash.Bytes())
@@ -245,131 +247,138 @@ func testDistibutedSigning(message []byte) {
 	if err != nil {
 		common.Logger.Error("should load keygen fixtures")
 	}
-
-	// PHASE: signing
-	// use a shuffled selection of the list of parties for this test
-	// init the parties
-	p2pCtx := tss.NewPeerContext(signPIDs)
-	parties := make([]*signing.LocalParty, 0, len(signPIDs))
-
-	errCh := make(chan *tss.Error, len(signPIDs))
-	outCh := make(chan tss.Message, len(signPIDs))
-	endCh := make(chan common.SignatureData, len(signPIDs))
-
-	updater := test.SharedPartyUpdater
-
-	// init the parties
-	for i := 0; i < len(signPIDs); i++ {
-		params := tss.NewParameters(tss.S256(), p2pCtx, signPIDs[i], len(signPIDs), testThreshold)
-
-		P := signing.NewLocalParty(z, params, keys[i], outCh, endCh).(*signing.LocalParty)
-		parties = append(parties, P)
-		go func(P *signing.LocalParty) {
-			if err := P.Start(); err != nil {
-				errCh <- err
-			}
-		}(P)
-	}
-
-	var ended int32
-signing:
 	for {
-		fmt.Printf("ACTIVE GOROUTINES: %d\n", runtime.NumGoroutine())
-		select {
-		case err := <-errCh:
-			common.Logger.Errorf("Error: %s", err)
-			assert.FailNow(nil, err.Error())
-			break signing
+		if valid_s {
+			break
+		}
 
-		case msg := <-outCh:
-			dest := msg.GetTo()
-			if dest == nil {
-				for _, P := range parties {
-					if P.PartyID().Index == msg.GetFrom().Index {
-						continue
-					}
-					go updater(P, msg, errCh)
+		// PHASE: signing
+		// use a shuffled selection of the list of parties for this test
+		// init the parties
+		p2pCtx := tss.NewPeerContext(signPIDs)
+		parties := make([]*signing.LocalParty, 0, len(signPIDs))
+
+		errCh := make(chan *tss.Error, len(signPIDs))
+		outCh := make(chan tss.Message, len(signPIDs))
+		endCh := make(chan common.SignatureData, len(signPIDs))
+
+		updater := test.SharedPartyUpdater
+
+		// init the parties
+		for i := 0; i < len(signPIDs); i++ {
+			params := tss.NewParameters(tss.S256(), p2pCtx, signPIDs[i], len(signPIDs), testThreshold)
+
+			P := signing.NewLocalParty(z, params, keys[i], outCh, endCh).(*signing.LocalParty)
+			parties = append(parties, P)
+			go func(P *signing.LocalParty) {
+				if err := P.Start(); err != nil {
+					errCh <- err
 				}
-			} else {
-				if dest[0].Index == msg.GetFrom().Index {
-					common.Logger.Fatalf("party %d tried to send a message to itself (%d)", dest[0].Index, msg.GetFrom().Index)
-				}
-				go updater(parties[dest[0].Index], msg, errCh)
-			}
+			}(P)
+		}
 
-		case <-endCh:
-			atomic.AddInt32(&ended, 1)
-			if atomic.LoadInt32(&ended) == int32(len(signPIDs)) {
-				common.Logger.Debug("Done. Received signature data from %d participants", ended)
-				R := parties[0].Temp.BigR
-				r := parties[0].Temp.Rx
-				fmt.Printf("sign result: R(%s, %s), r=%s\n", R.X().String(), R.Y().String(), r.String())
+		var ended int32
+	signing:
+		for {
+			select {
+			case err := <-errCh:
+				common.Logger.Errorf("Error: %s", err)
+				assert.FailNow(nil, err.Error())
+				break signing
 
-				modN := common.ModInt(tss.S256().Params().N)
-
-				// BEGIN check s correctness
-				sumS := big.NewInt(0)
-				for _, p := range parties {
-					sumS = modN.Add(sumS, p.Temp.Si)
-				}
-				fmt.Printf("S: %s\n", sumS.String())
-				// END check s correctness
-
-				// BEGIN ECDSA verify
-				pkX, pkY := keys[0].ECDSAPub.X(), keys[0].ECDSAPub.Y()
-				pk := ecdsa.PublicKey{
-					Curve: tss.EC(),
-					X:     pkX,
-					Y:     pkY,
-				}
-				fmt.Println("X: ", pkX)
-				fmt.Println("Y: ", pkY)
-				fmt.Println("r: ", R.X())
-				fmt.Println("s: ", sumS)
-				addressUser := crypto.PubkeyToAddress(pk)
-				fmt.Println("addressUser: ", addressUser)
-				publicKeyBytes := crypto.FromECDSAPub(&pk)
-
-				r_sig := hex.EncodeToString(R.X().Bytes())
-				s_sig := hex.EncodeToString(sumS.Bytes())
-				v := ""
-				if R.X().Cmp(tss.S256().Params().N) == 1 {
-					if R.Y().Int64()%2 == 0 {
-						v = "10"
-					} else {
-						v = "11"
+			case msg := <-outCh:
+				dest := msg.GetTo()
+				if dest == nil {
+					for _, P := range parties {
+						if P.PartyID().Index == msg.GetFrom().Index {
+							continue
+						}
+						go updater(P, msg, errCh)
 					}
 				} else {
-					if R.Y().Int64()%2 == 0 {
-						v = "00"
-					} else {
-						v = "01"
+					if dest[0].Index == msg.GetFrom().Index {
+						common.Logger.Fatalf("party %d tried to send a message to itself (%d)", dest[0].Index, msg.GetFrom().Index)
 					}
+					go updater(parties[dest[0].Index], msg, errCh)
 				}
 
-				sig, _ := hex.DecodeString(r_sig + s_sig + v)
-				pubkey, err := crypto.Ecrecover(hash.Bytes(), sig)
-				if err != nil {
-					fmt.Println("error: ", err)
-				}
-				matches := bytes.Equal(pubkey, publicKeyBytes)
-				fmt.Println("match: ", matches)
-				fmt.Println("Signature: ", hexutil.Encode(sig))
-				fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(pubkey[1:])[12:]).Hex())
+			case <-endCh:
+				atomic.AddInt32(&ended, 1)
+				if atomic.LoadInt32(&ended) == int32(len(signPIDs)) {
+					common.Logger.Debug("Done. Received signature data from %d participants", ended)
+					R := parties[0].Temp.BigR
+					modN := common.ModInt(tss.S256().Params().N)
 
-				ok := ecdsa.Verify(&pk, z.Bytes(), R.X(), sumS)
-				assert.True(nil, ok, "ecdsa verify must pass")
-				fmt.Print("ECDSA signing test done.")
-				// END ECDSA verify
-				break signing
+					// BEGIN check s correctness
+					sumS := big.NewInt(0)
+					for _, p := range parties {
+						sumS = modN.Add(sumS, p.Temp.Si)
+					}
+					// END check s correctness
+
+					// BEGIN ECDSA verify
+					pkX, pkY := keys[0].ECDSAPub.X(), keys[0].ECDSAPub.Y()
+					pk := ecdsa.PublicKey{
+						Curve: tss.EC(),
+						X:     pkX,
+						Y:     pkY,
+					}
+					publicKeyBytes := crypto.FromECDSAPub(&pk)
+
+					r_sig := hex.EncodeToString(R.X().Bytes())
+					s_sig := hex.EncodeToString(sumS.Bytes())
+					s := "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0"
+					i := new(big.Int)
+					i.SetString(s, 16)
+					if sumS.Cmp(i) == -1 { // As per eip-1271
+						valid_s = true
+						fmt.Println("messageArray: ", message)
+						fmt.Println("messagetoSign: ", hash)
+						r := parties[0].Temp.Rx
+						fmt.Printf("sign result: R(%s, %s), r=%s\n", R.X().String(), R.Y().String(), r.String())
+						fmt.Printf("S: %s\n", sumS.String())
+						v := ""
+						if R.X().Cmp(tss.S256().Params().N) == 1 {
+							if R.Y().Int64()%2 == 0 {
+								v = "10"
+							} else {
+								v = "11"
+							}
+						} else {
+							if R.Y().Int64()%2 == 0 {
+								v = "00"
+							} else {
+								v = "01"
+							}
+						}
+
+						sig, _ := hex.DecodeString(r_sig + s_sig + v)
+						pubkey, err := crypto.Ecrecover(hash.Bytes(), sig)
+						if err != nil {
+							fmt.Println("error: ", err)
+						}
+						matches := bytes.Equal(pubkey, publicKeyBytes)
+						fmt.Println("match: ", matches)
+						fmt.Println("Signature: ", hexutil.Encode(sig))
+						fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(pubkey[1:])[12:]).Hex())
+
+						ok := ecdsa.Verify(&pk, z.Bytes(), R.X(), sumS)
+						assert.True(nil, ok, "ecdsa verify must pass")
+						fmt.Print("ECDSA signing test done.")
+
+					}
+
+					// END ECDSA verify
+					break signing
+				}
 			}
 		}
 	}
-
 }
 
 func main() {
 	message := []byte("hello world")
-	testDistibutedKeyGeneration()
+	// testDistibutedKeyGeneration()
 	testDistibutedSigning(message)
+
 }
