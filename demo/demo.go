@@ -353,6 +353,7 @@ func testDistibutedSigning(message []byte) {
 
 						sig, _ := hex.DecodeString(r_sig + s_sig + v)
 						signatureNoRecoverID := sig[:len(sig)-1]
+						//Verify signature
 						verified := crypto.VerifySignature(publicKeyBytes, hash.Bytes(), signatureNoRecoverID)
 						assert.True(nil, verified, "ecdsa verify must pass")
 
@@ -372,7 +373,7 @@ func testDistibutedSigning(message []byte) {
 
 func main() {
 	message := []byte("hello world")
-	// testDistibutedKeyGeneration()
+	testDistibutedKeyGeneration()
 	testDistibutedSigning(message)
 
 }
