@@ -74,6 +74,27 @@ func tryWriteTestFixtureFile(index int, data keygen.LocalPartySaveData) {
 	//
 }
 
+func GetaddressUsser(filename string) {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		fmt.Println("Error when opening file: ", err)
+	}
+	var payload keygen.LocalPartySaveData
+	err = json.Unmarshal(content, &payload)
+	if err != nil {
+		fmt.Println("Error during Unmarshal(): ", err)
+	}
+	param := payload.ECDSAPub
+	pk := ecdsa.PublicKey{
+		Curve: param.Curve(),
+		X:     param.X(),
+		Y:     param.Y(),
+	}
+	publicKeyBytes := crypto.FromECDSAPub(&pk)
+	fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+
+}
+
 func LoadKeygenTestFixtures(qty int, optionalStart ...int) ([]keygen.LocalPartySaveData, tss.SortedPartyIDs, error) {
 	keys := make([]keygen.LocalPartySaveData, 0, qty)
 	start := 0
@@ -148,6 +169,7 @@ func LoadKeygenTestFixturesRandomSet(qty, fixtureCount int) ([]keygen.LocalParty
 	}
 	sortedPIDs := tss.SortPartyIDs(partyIDs)
 	sort.Slice(keys, func(i, j int) bool { return keys[i].ShareID.Cmp(keys[j].ShareID) == -1 })
+
 	return keys, sortedPIDs, nil
 }
 
@@ -187,13 +209,13 @@ func testDistibutedKeyGeneration() {
 				errCh <- err
 			}
 		}(P)
+
 	}
 
 	// PHASE: keygen
 	var ended int32
 keygen:
 	for {
-		//fmt.Printf("ACTIVE GOROUTINES: %d\n", runtime.NumGoroutine())
 		select {
 		case err := <-errCh:
 			common.Logger.Errorf("Error: %s", err)
@@ -228,9 +250,11 @@ keygen:
 				fmt.Printf("Start goroutines: %d, End goroutines: %d", startGR, runtime.NumGoroutine())
 
 				break keygen
+
 			}
 		}
 	}
+	GetaddressUsser("./_fixtures/keygen_data_0.json")
 
 }
 
