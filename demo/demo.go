@@ -74,7 +74,7 @@ func tryWriteTestFixtureFile(index int, data keygen.LocalPartySaveData) {
 	//
 }
 
-func GetaddressUsser(filename string) {
+func getAddressUser(filename string) {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		fmt.Println("Error when opening file: ", err)
@@ -91,7 +91,7 @@ func GetaddressUsser(filename string) {
 		Y:     param.Y(),
 	}
 	publicKeyBytes := crypto.FromECDSAPub(&pk)
-	fmt.Println("address of User: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+	fmt.Println("Address of User: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 
 }
 
@@ -246,15 +246,15 @@ keygen:
 
 			atomic.AddInt32(&ended, 1)
 			if atomic.LoadInt32(&ended) == int32(len(pIDs)) {
-				fmt.Printf("Done. Received save data from %d participants", ended)
-				fmt.Printf("Start goroutines: %d, End goroutines: %d", startGR, runtime.NumGoroutine())
+				fmt.Printf("Done. Received save data from %d participants \n", ended)
+				fmt.Printf("Start goroutines: %d, End goroutines: %d \n", startGR, runtime.NumGoroutine())
 
 				break keygen
 
 			}
 		}
 	}
-	GetaddressUsser("./_fixtures/keygen_data_0.json")
+	getAddressUser(filepath.Join("_fixtures", "keygen_data_1.json"))
 
 }
 
