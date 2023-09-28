@@ -91,7 +91,7 @@ func GetaddressUsser(filename string) {
 		Y:     param.Y(),
 	}
 	publicKeyBytes := crypto.FromECDSAPub(&pk)
-	fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+	fmt.Println("address of User: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 
 }
 
@@ -355,9 +355,6 @@ func testDistibutedSigning(message common2.Hash) {
 					i.SetString(s, 16)
 					if sumS.Cmp(i) == -1 { // As per eip 2717
 						valid_s = true
-						r := parties[0].Temp.Rx
-						fmt.Printf("sign result: R(%s, %s), r=%s\n", R.X().String(), R.Y().String(), r.String())
-						fmt.Printf("S: %s\n", sumS.String())
 						v := ""
 						if R.X().Cmp(tss.S256().Params().N) == 1 {
 							if R.Y().Int64()%2 == 0 {
