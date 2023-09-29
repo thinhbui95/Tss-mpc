@@ -19,7 +19,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/test"
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	common2 "github.com/ethereum/go-ethereum/common"
+	eth_common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
@@ -91,8 +91,13 @@ func getAddressUser(filename string) {
 		Y:     param.Y(),
 	}
 	publicKeyBytes := crypto.FromECDSAPub(&pk)
-	fmt.Println("Address of User: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+	fmt.Println("Address of User: ", eth_common.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 
+}
+
+func prefixHash(data []byte) eth_common.Hash {
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), data)
+	return crypto.Keccak256Hash([]byte(msg))
 }
 
 func LoadKeygenTestFixtures(qty int, optionalStart ...int) ([]keygen.LocalPartySaveData, tss.SortedPartyIDs, error) {
@@ -258,10 +263,9 @@ keygen:
 
 }
 
-func testDistibutedSigning(message common2.Hash) {
+func testDistibutedSigning(message eth_common.Hash) {
 	testThreshold := TestThreshold
 	testParticipants := TestParticipants
-	//hash := crypto.Keccak256Hash(message)
 
 	z := new(big.Int)
 	z.SetBytes(message.Bytes())
@@ -377,7 +381,7 @@ func testDistibutedSigning(message common2.Hash) {
 						assert.True(nil, verified, "ecdsa verify must pass")
 
 						fmt.Println("Signature: ", hexutil.Encode(sig))
-						fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+						fmt.Println("address: ", eth_common.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 						fmt.Print("ECDSA signing test done.")
 
 					}
@@ -391,11 +395,16 @@ func testDistibutedSigning(message common2.Hash) {
 }
 
 func main() {
-	message := []byte("hello guy! Welcome to Vietnam")
-	hash := crypto.Keccak256Hash(message)
-	fmt.Println("messageArray: ", message)
-	fmt.Println("messagetoSign: ", hash)
+	message := []byte("Hello guy! Welcome to Vietnam")
+	messageHash := crypto.Keccak256Hash(message)
+	hash := prefixHash(messageHash.Bytes())
+	fmt.Println("Message Bytes: ", message)
+	fmt.Println("Message to be signed: ", hash)
+
+	// Generate key
 	testDistibutedKeyGeneration()
+
+	// Signing
 	testDistibutedSigning(hash)
 
 }
