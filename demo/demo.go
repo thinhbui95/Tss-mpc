@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,11 +16,12 @@ import (
 	"sync/atomic"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v2/crypto/vss"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/test"
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	common2 "github.com/ethereum/go-ethereum/common"
+	eth_common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
@@ -29,8 +31,8 @@ import (
 const (
 	// To change these parameters, you must first delete the text fixture files in test/_fixtures/ and then run the keygen test alone.
 	// Then the signing and resharing tests will work with the new n, t configuration using the newly written fixture files.
-	TestParticipants = 6
-	TestThreshold    = 2
+	TestParticipants = 5
+	TestThreshold    = 3
 )
 const (
 	testFixtureDirFormat  = "%s/_fixtures"
@@ -74,7 +76,7 @@ func tryWriteTestFixtureFile(index int, data keygen.LocalPartySaveData) {
 	//
 }
 
-func GetaddressUsser(filename string) {
+func getAddressUser(filename string) {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		fmt.Println("Error when opening file: ", err)
@@ -91,8 +93,13 @@ func GetaddressUsser(filename string) {
 		Y:     param.Y(),
 	}
 	publicKeyBytes := crypto.FromECDSAPub(&pk)
-	fmt.Println("address of User: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+	fmt.Println("Address of User: ", eth_common.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 
+}
+
+func prefixHash(data []byte) eth_common.Hash {
+	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), data)
+	return crypto.Keccak256Hash([]byte(msg))
 }
 
 func LoadKeygenTestFixtures(qty int, optionalStart ...int) ([]keygen.LocalPartySaveData, tss.SortedPartyIDs, error) {
@@ -246,22 +253,21 @@ keygen:
 
 			atomic.AddInt32(&ended, 1)
 			if atomic.LoadInt32(&ended) == int32(len(pIDs)) {
-				fmt.Printf("Done. Received save data from %d participants", ended)
-				fmt.Printf("Start goroutines: %d, End goroutines: %d", startGR, runtime.NumGoroutine())
+				fmt.Printf("Done. Received save data from %d participants \n", ended)
+				fmt.Printf("Start goroutines: %d, End goroutines: %d \n", startGR, runtime.NumGoroutine())
 
 				break keygen
 
 			}
 		}
 	}
-	GetaddressUsser("./_fixtures/keygen_data_0.json")
+	getAddressUser(filepath.Join("_fixtures", "keygen_data_1.json"))
 
 }
 
-func testDistibutedSigning(message common2.Hash) {
+func testDistibutedSigning(message eth_common.Hash) {
 	testThreshold := TestThreshold
 	testParticipants := TestParticipants
-	//hash := crypto.Keccak256Hash(message)
 
 	z := new(big.Int)
 	z.SetBytes(message.Bytes())
@@ -377,7 +383,7 @@ func testDistibutedSigning(message common2.Hash) {
 						assert.True(nil, verified, "ecdsa verify must pass")
 
 						fmt.Println("Signature: ", hexutil.Encode(sig))
-						fmt.Println("address: ", common2.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+						fmt.Println("address: ", eth_common.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 						fmt.Print("ECDSA signing test done.")
 
 					}
@@ -388,14 +394,68 @@ func testDistibutedSigning(message common2.Hash) {
 			}
 		}
 	}
+
+}
+
+func Reconstruct(threshold int, ec elliptic.Curve, shares []keygen.LocalPartySaveData) (*ecdsa.PrivateKey, error) {
+	var vssShares = make(vss.Shares, len(shares))
+	for i, share := range shares {
+		vssShare := &vss.Share{
+			Threshold: threshold,
+			ID:        share.ShareID,
+			Share:     share.Xi,
+		}
+		vssShares[i] = vssShare
+	}
+
+	d, err := vssShares.ReConstruct(ec)
+	if err != nil {
+		return nil, err
+	}
+
+	x, y := ec.ScalarBaseMult(d.Bytes())
+
+	privateKey := &ecdsa.PrivateKey{
+		D: d,
+		PublicKey: ecdsa.PublicKey{
+			Curve: ec,
+			X:     x,
+			Y:     y,
+		},
+	}
+
+	return privateKey, nil
+}
+
+func reConstructionPrivateKey() {
+	keys, _, err := LoadKeygenTestFixturesRandomSet(TestThreshold+1, TestParticipants)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	privateKey, err := Reconstruct(TestThreshold, tss.EC(), keys)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	privateKeyBytes := crypto.FromECDSA(privateKey)
+
+	fmt.Println("Private Key: ", hexutil.Encode(privateKeyBytes)[2:])
+
 }
 
 func main() {
-	message := []byte("hello guy! Welcome to Vietnam")
-	hash := crypto.Keccak256Hash(message)
-	fmt.Println("messageArray: ", message)
-	fmt.Println("messagetoSign: ", hash)
+	message := []byte("Hello guy! Welcome to Vietnam")
+	messageHash := crypto.Keccak256Hash(message)
+	hash := prefixHash(messageHash.Bytes())
+	fmt.Println("Message Bytes: ", message)
+	fmt.Println("Message to be signed: ", hash)
+
+	// Generate key
 	testDistibutedKeyGeneration()
+
+	//Reconstruct Private key
+	reConstructionPrivateKey()
+
+	// Signing
 	testDistibutedSigning(hash)
 
 }
