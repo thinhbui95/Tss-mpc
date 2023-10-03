@@ -106,7 +106,11 @@ func prefixHash(data []byte) eth_common.Hash {
 	return crypto.Keccak256Hash([]byte(msg))
 }
 
+<<<<<<< HEAD
 func LoadKeygenTestFixtures(typeFixtures string, qty int, optionalStart ...int) ([]keygen.LocalPartySaveData, tss.SortedPartyIDs, error) {
+=======
+func LoadKeygenTestFixtures(qty int, optionalStart ...int) ([]keygen.LocalPartySaveData, tss.SortedPartyIDs, error) {
+>>>>>>> main
 	keys := make([]keygen.LocalPartySaveData, 0, qty)
 	start := 0
 	if 0 < len(optionalStart) {
@@ -269,7 +273,12 @@ keygen:
 
 }
 
+<<<<<<< HEAD
 func testDistibutedSigning(typeFixtures string, message eth_common.Hash, threshold int) {
+=======
+func testDistibutedSigning(message eth_common.Hash) {
+	testThreshold := TestThreshold
+>>>>>>> main
 	testParticipants := TestParticipants
 
 	z := new(big.Int)
@@ -387,7 +396,11 @@ func testDistibutedSigning(typeFixtures string, message eth_common.Hash, thresho
 
 						fmt.Println("Signature: ", hexutil.Encode(sig))
 						fmt.Println("address: ", eth_common.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
+<<<<<<< HEAD
 						fmt.Println("ECDSA signing test done.")
+=======
+						fmt.Print("ECDSA signing test done.")
+>>>>>>> main
 
 					}
 
@@ -567,6 +580,7 @@ func main() {
 	fmt.Println("Message Bytes: ", message)
 	fmt.Println("Message to be signed: ", hash)
 
+<<<<<<< HEAD
 	//Generate key
 	fmt.Println(" Gen key ")
 	testDistibutedKeyGeneration()
@@ -590,5 +604,12 @@ func main() {
 	// Signing after resharing
 	fmt.Println(" Sign message after resharing")
 	testDistibutedSigning(testFixtureDirFormatResharing, hash, newthresold)
+=======
+	// Generate key
+	testDistibutedKeyGeneration()
+
+	// Signing
+	testDistibutedSigning(hash)
+>>>>>>> main
 
 }
