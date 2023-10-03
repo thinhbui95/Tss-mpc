@@ -32,7 +32,7 @@ type (
 
 		// outbound messaging
 		out chan<- tss.Message
-		end chan<- LocalPartySaveData
+		end chan<- *LocalPartySaveData
 	}
 
 	localMessageStore struct {
@@ -51,6 +51,9 @@ type (
 		vs            vss.Vs
 		shares        vss.Shares
 		deCommitPolyG cmt.HashDeCommitment
+
+		ssid      []byte
+		ssidNonce *big.Int
 	}
 )
 
@@ -58,7 +61,7 @@ type (
 func NewLocalParty(
 	params *tss.Parameters,
 	out chan<- tss.Message,
-	end chan<- LocalPartySaveData,
+	end chan<- *LocalPartySaveData,
 ) tss.Party {
 	partyCount := params.PartyCount()
 	data := NewLocalPartySaveData(partyCount)

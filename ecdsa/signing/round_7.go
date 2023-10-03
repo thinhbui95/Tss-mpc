@@ -32,6 +32,7 @@ func (round *round7) Start() *tss.Error {
 		if j == round.PartyID().Index {
 			continue
 		}
+		ContextJ := common.AppendBigIntToBytesSlice(round.temp.ssid, big.NewInt(int64(j)))
 		r5msg := round.temp.signRound5Messages[j].Content().(*SignRound5Message)
 		r6msg := round.temp.signRound6Messages[j].Content().(*SignRound6Message)
 		cj, dj := r5msg.UnmarshalCommitment(), r6msg.UnmarshalDeCommitment()
@@ -52,11 +53,11 @@ func (round *round7) Start() *tss.Error {
 		}
 		bigAjs[j] = bigAj
 		pijA, err := r6msg.UnmarshalZKProof(round.Params().EC())
-		if err != nil || !pijA.Verify(bigAj) {
+		if err != nil || !pijA.Verify(ContextJ, bigAj) {
 			return round.WrapError(errors.New("schnorr verify for Aj failed"), Pj)
 		}
 		pijV, err := r6msg.UnmarshalZKVProof(round.Params().EC())
-		if err != nil || !pijV.Verify(bigVj, round.temp.BigR) {
+		if err != nil || !pijV.Verify(ContextJ, bigVj, round.temp.BigR) {
 			return round.WrapError(errors.New("vverify for Vj failed"), Pj)
 		}
 	}
@@ -65,7 +66,7 @@ func (round *round7) Start() *tss.Error {
 	AX, AY := round.temp.bigAi.X(), round.temp.bigAi.Y()
 	minusM := modN.Sub(big.NewInt(0), round.temp.m)
 	gToMInvX, gToMInvY := round.Params().EC().ScalarBaseMult(minusM.Bytes())
-	minusR := modN.Sub(big.NewInt(0), round.temp.Rx)
+	minusR := modN.Sub(big.NewInt(0), round.temp.rx)
 	yToRInvX, yToRInvY := round.Params().EC().ScalarMult(round.key.ECDSAPub.X(), round.key.ECDSAPub.Y(), minusR.Bytes())
 	VX, VY := round.Params().EC().Add(gToMInvX, gToMInvY, yToRInvX, yToRInvY)
 	VX, VY = round.Params().EC().Add(VX, VY, round.temp.bigVi.X(), round.temp.bigVi.Y())

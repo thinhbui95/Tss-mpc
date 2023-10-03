@@ -66,7 +66,7 @@ func TestE2EConcurrent(t *testing.T) {
 
 	errCh := make(chan *tss.Error, bothCommitteesPax)
 	outCh := make(chan tss.Message, bothCommitteesPax)
-	endCh := make(chan keygen.LocalPartySaveData, bothCommitteesPax)
+	endCh := make(chan *keygen.LocalPartySaveData, bothCommitteesPax)
 
 	updater := test.SharedPartyUpdater
 
@@ -79,6 +79,10 @@ func TestE2EConcurrent(t *testing.T) {
 	// init the new parties
 	for j, pID := range newPIDs {
 		params := tss.NewReSharingParameters(tss.S256(), oldP2PCtx, newP2PCtx, pID, testParticipants, threshold, newPCount, newThreshold)
+		// do not use in untrusted setting
+		params.SetNoProofMod()
+		// do not use in untrusted setting
+		params.SetNoProofFac()
 		save := keygen.NewLocalPartySaveData(newPCount)
 		if j < len(fixtures) && len(newPIDs) <= len(fixtures) {
 			save.LocalPreParams = fixtures[j].LocalPreParams
@@ -136,11 +140,12 @@ func TestE2EConcurrent(t *testing.T) {
 			if save.Xi != nil {
 				index, err := save.OriginalIndex()
 				assert.NoErrorf(t, err, "should not be an error getting a party's index from save data")
-				newKeys[index] = save
+				newKeys[index] = *save
 			} else {
 				endedOldCommittee++
 			}
 			atomic.AddInt32(&reSharingEnded, 1)
+			fmt.Println("TODO old:", len(oldCommittee), "new:", len(newCommittee), "finished:", reSharingEnded)
 			if atomic.LoadInt32(&reSharingEnded) == int32(len(oldCommittee)+len(newCommittee)) {
 				assert.Equal(t, len(oldCommittee), endedOldCommittee)
 				t.Logf("Resharing done. Reshared %d participants", reSharingEnded)
@@ -168,7 +173,7 @@ signing:
 
 	signErrCh := make(chan *tss.Error, len(signPIDs))
 	signOutCh := make(chan tss.Message, len(signPIDs))
-	signEndCh := make(chan common.SignatureData, len(signPIDs))
+	signEndCh := make(chan *common.SignatureData, len(signPIDs))
 
 	for j, signPID := range signPIDs {
 		params := tss.NewParameters(tss.S256(), signP2pCtx, signPID, len(signPIDs), newThreshold)

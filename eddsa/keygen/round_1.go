@@ -22,7 +22,7 @@ var (
 )
 
 // round 1 represents round 1 of the keygen part of the EDDSA TSS spec
-func newRound1(params *tss.Parameters, save *LocalPartySaveData, temp *localTempData, out chan<- tss.Message, end chan<- LocalPartySaveData) tss.Round {
+func newRound1(params *tss.Parameters, save *LocalPartySaveData, temp *localTempData, out chan<- tss.Message, end chan<- *LocalPartySaveData) tss.Round {
 	return &round1{
 		&base{params, save, temp, out, end, make([]bool, len(params.Parties().IDs())), false, 1}}
 }
@@ -37,6 +37,13 @@ func (round *round1) Start() *tss.Error {
 
 	Pi := round.PartyID()
 	i := Pi.Index
+
+	round.temp.ssidNonce = new(big.Int).SetUint64(0)
+	ssid, err := round.getSSID()
+	if err != nil {
+		return round.WrapError(err)
+	}
+	round.temp.ssid = ssid
 
 	// 1. calculate "partial" key share ui
 	ui := common.GetRandomPositiveInt(round.Params().EC().Params().N)
