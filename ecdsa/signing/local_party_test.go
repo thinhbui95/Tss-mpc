@@ -52,7 +52,7 @@ func TestE2EConcurrent(t *testing.T) {
 
 	errCh := make(chan *tss.Error, len(signPIDs))
 	outCh := make(chan tss.Message, len(signPIDs))
-	endCh := make(chan common.SignatureData, len(signPIDs))
+	endCh := make(chan *common.SignatureData, len(signPIDs))
 
 	updater := test.SharedPartyUpdater
 
@@ -100,7 +100,7 @@ signing:
 			if atomic.LoadInt32(&ended) == int32(len(signPIDs)) {
 				t.Logf("Done. Received signature data from %d participants", ended)
 				R := parties[0].Temp.BigR
-				r := parties[0].Temp.Rx
+				r := parties[0].Temp.rx
 				fmt.Printf("sign result: R(%s, %s), r=%s\n", R.X().String(), R.Y().String(), r.String())
 
 				modN := common.ModInt(tss.S256().Params().N)
@@ -161,7 +161,7 @@ func TestE2EWithHDKeyDerivation(t *testing.T) {
 
 	errCh := make(chan *tss.Error, len(signPIDs))
 	outCh := make(chan tss.Message, len(signPIDs))
-	endCh := make(chan common.SignatureData, len(signPIDs))
+	endCh := make(chan *common.SignatureData, len(signPIDs))
 
 	updater := test.SharedPartyUpdater
 
@@ -208,7 +208,7 @@ signing:
 			if atomic.LoadInt32(&ended) == int32(len(signPIDs)) {
 				t.Logf("Done. Received signature data from %d participants", ended)
 				R := parties[0].Temp.BigR
-				r := parties[0].Temp.Rx
+				r := parties[0].Temp.rx
 				fmt.Printf("sign result: R(%s, %s), r=%s\n", R.X().String(), R.Y().String(), r.String())
 
 				modN := common.ModInt(tss.S256().Params().N)

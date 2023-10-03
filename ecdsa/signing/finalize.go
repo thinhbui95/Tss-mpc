@@ -38,7 +38,7 @@ func (round *finalization) Start() *tss.Error {
 
 	recid := 0
 	// byte v = if(R.X > curve.N) then 2 else 0) | (if R.Y.IsEven then 0 else 1);
-	if round.temp.Rx.Cmp(round.Params().EC().Params().N) > 0 {
+	if round.temp.rx.Cmp(round.Params().EC().Params().N) > 0 {
 		recid = 2
 	}
 	if round.temp.ry.Bit(0) != 0 {
@@ -57,7 +57,7 @@ func (round *finalization) Start() *tss.Error {
 
 	// save the signature for final output
 	bitSizeInBytes := round.Params().EC().Params().BitSize / 8
-	round.data.R = padToLengthBytesInPlace(round.temp.Rx.Bytes(), bitSizeInBytes)
+	round.data.R = padToLengthBytesInPlace(round.temp.rx.Bytes(), bitSizeInBytes)
 	round.data.S = padToLengthBytesInPlace(sumS.Bytes(), bitSizeInBytes)
 	round.data.Signature = append(round.data.R, round.data.S...)
 	round.data.SignatureRecovery = []byte{byte(recid)}
@@ -68,12 +68,12 @@ func (round *finalization) Start() *tss.Error {
 		X:     round.key.ECDSAPub.X(),
 		Y:     round.key.ECDSAPub.Y(),
 	}
-	ok := ecdsa.Verify(&pk, round.temp.m.Bytes(), round.temp.Rx, sumS)
+	ok := ecdsa.Verify(&pk, round.temp.m.Bytes(), round.temp.rx, sumS)
 	if !ok {
 		return round.WrapError(fmt.Errorf("signature verification failed"))
 	}
 
-	round.end <- *round.data
+	round.end <- round.data
 
 	return nil
 }
