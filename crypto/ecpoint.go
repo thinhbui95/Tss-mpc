@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -31,28 +30,7 @@ type ECPoint struct {
 var (
 	eight    = big.NewInt(8)
 	eightInv = new(big.Int).ModInverse(eight, edwards.Edwards().Params().N)
-	one      = big.NewInt(1)
 )
-
-// RandomNum generates a random number r, 1 < r < n.
-// Input n has to be greater than 1, otherwise panic
-func RandomNum(n *big.Int) *big.Int {
-	if n == nil {
-		panic(fmt.Errorf("RandomNum error, n is nil"))
-	}
-	if n.Cmp(one) != 1 {
-		panic(fmt.Errorf("RandomNum error: max has to be greater than 1"))
-	}
-	for {
-		r, err := rand.Int(rand.Reader, n)
-		if err != nil {
-			panic(fmt.Errorf("RandomNum error"))
-		}
-		if r.Cmp(one) == 1 {
-			return r
-		}
-	}
-}
 
 // Creates a new ECPoint and checks that the given coordinates are on the elliptic curve.
 func NewECPoint(curve elliptic.Curve, X, Y *big.Int) (*ECPoint, error) {
@@ -61,24 +39,6 @@ func NewECPoint(curve elliptic.Curve, X, Y *big.Int) (*ECPoint, error) {
 	}
 	return &ECPoint{curve, [2]*big.Int{X, Y}}, nil
 }
-
-func toECDSAFromHex(hexString string) (*ecdsa.PrivateKey, error) {
-	pk := new(ecdsa.PrivateKey)
-	pk.D, _ = new(big.Int).SetString(hexString, 16)
-	pk.PublicKey.Curve = elliptic.P256()
-	pk.PublicKey.X, pk.PublicKey.Y = pk.PublicKey.Curve.ScalarBaseMult(pk.D.Bytes())
-	return pk, nil
-}
-
-// func ImportECPoint(curve elliptic.Curve, pri *big.Int) (*ECPoint, error) {
-// 	prikey := hex.EncodeToString(pri.Bytes())
-// 	pk, err := toECDSAFromHex(prikey)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 	}
-// 	return &ECPoint{curve, [2]*big.Int{pk.X, pk.Y}}, nil
-
-// }
 
 // Creates a new ECPoint without checking that the coordinates are on the elliptic curve.
 // Only use this function when you are completely sure that the point is already on the curve.
@@ -101,7 +61,10 @@ func (p *ECPoint) Add(p1 *ECPoint) (*ECPoint, error) {
 
 func (p *ECPoint) ScalarMult(k *big.Int) *ECPoint {
 	x, y := p.curve.ScalarMult(p.X(), p.Y(), k.Bytes())
-	newP, _ := NewECPoint(p.curve, x, y) // it must be on the curve, no need to check.
+	newP, err := NewECPoint(p.curve, x, y) // it must be on the curve, no need to check.
+	if err != nil {
+		panic(fmt.Errorf("scalar mult to an ecpoint %s", err.Error()))
+	}
 	return newP
 }
 
@@ -143,7 +106,10 @@ func (p *ECPoint) EightInvEight() *ECPoint {
 
 func ScalarBaseMult(curve elliptic.Curve, k *big.Int) *ECPoint {
 	x, y := curve.ScalarBaseMult(k.Bytes())
-	p, _ := NewECPoint(curve, x, y) // it must be on the curve, no need to check.
+	p, err := NewECPoint(curve, x, y) // it must be on the curve, no need to check.
+	if err != nil {
+		panic(fmt.Errorf("scalar mult to an ecpoint %s", err.Error()))
+	}
 	return p
 }
 

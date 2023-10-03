@@ -47,7 +47,6 @@ type (
 
 		// used for test assertions (may be discarded)
 		ECDSAPub *crypto.ECPoint // y
-
 	}
 )
 
@@ -57,7 +56,6 @@ func NewLocalPartySaveData(partyCount int) (saveData LocalPartySaveData) {
 	saveData.H1j, saveData.H2j = make([]*big.Int, partyCount), make([]*big.Int, partyCount)
 	saveData.BigXj = make([]*crypto.ECPoint, partyCount)
 	saveData.PaillierPKs = make([]*paillier.PublicKey, partyCount)
-
 	return
 }
 
@@ -70,6 +68,8 @@ func (preParams LocalPreParams) Validate() bool {
 
 func (preParams LocalPreParams) ValidateWithProof() bool {
 	return preParams.Validate() &&
+		preParams.PaillierSK.P != nil &&
+		preParams.PaillierSK.Q != nil &&
 		preParams.Alpha != nil &&
 		preParams.Beta != nil &&
 		preParams.P != nil &&

@@ -1,3 +1,5 @@
+// Copyright © Swingby
+
 package ckd
 
 import (
