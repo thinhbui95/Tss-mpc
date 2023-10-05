@@ -254,7 +254,7 @@ keygen:
 				for j, Pj := range parties {
 					pShares := make(vss.Shares, 0)
 					for _, P := range parties {
-						vssMsgs := P.temp.kgRound2Message1s
+						vssMsgs := P.Temp.kgRound2Message1s
 						share := vssMsgs[j].Content().(*KGRound2Message1).Share
 						shareStruct := &vss.Share{
 							Threshold: threshold,
@@ -267,9 +267,9 @@ keygen:
 					assert.NoError(t, err, "vss.ReConstruct should not throw error")
 
 					// uG test: u*G[j] == V[0]
-					assert.Equal(t, uj, Pj.temp.ui)
+					assert.Equal(t, uj, Pj.Temp.ui)
 					uG := crypto.ScalarBaseMult(tss.EC(), uj)
-					assert.True(t, uG.Equals(Pj.temp.vs[0]), "ensure u*G[j] == V_0")
+					assert.True(t, uG.Equals(Pj.Temp.vs[0]), "ensure u*G[j] == V_0")
 
 					// xj tests: BigXj == xj*G
 					xj := Pj.data.Xi
@@ -283,10 +283,10 @@ keygen:
 						badShares[len(badShares)-1].Share.Set(big.NewInt(0))
 						uj, err := pShares[:threshold].ReConstruct(tss.S256())
 						assert.NoError(t, err)
-						assert.NotEqual(t, parties[j].temp.ui, uj)
+						assert.NotEqual(t, parties[j].Temp.ui, uj)
 						BigXjX, BigXjY := tss.EC().ScalarBaseMult(uj.Bytes())
-						assert.NotEqual(t, BigXjX, Pj.temp.vs[0].X())
-						assert.NotEqual(t, BigXjY, Pj.temp.vs[0].Y())
+						assert.NotEqual(t, BigXjX, Pj.Temp.vs[0].X())
+						assert.NotEqual(t, BigXjY, Pj.Temp.vs[0].Y())
 					}
 					u = new(big.Int).Add(u, uj)
 				}

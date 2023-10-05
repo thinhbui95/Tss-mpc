@@ -102,17 +102,17 @@ signing:
 			atomic.AddInt32(&ended, 1)
 			if atomic.LoadInt32(&ended) == int32(len(signPIDs)) {
 				t.Logf("Done. Received signature data from %d participants", ended)
-				R := parties[0].temp.r
+				R := parties[0].Temp.r
 
 				// BEGIN check s correctness
-				sumS := parties[0].temp.si
+				sumS := parties[0].Temp.si
 				for i, p := range parties {
 					if i == 0 {
 						continue
 					}
 
 					var tmpSumS [32]byte
-					edwards25519.ScMulAdd(&tmpSumS, sumS, bigIntToEncodedBytes(big.NewInt(1)), p.temp.si)
+					edwards25519.ScMulAdd(&tmpSumS, sumS, bigIntToEncodedBytes(big.NewInt(1)), p.Temp.si)
 					sumS = &tmpSumS
 				}
 				fmt.Printf("S: %s\n", encodedBytesToBigInt(sumS).String())

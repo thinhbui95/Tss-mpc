@@ -7,6 +7,7 @@ require (
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/btcsuite/btcutil v1.0.2
+	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/decred/dcrd/dcrec/edwards/v2 v2.0.3
 	github.com/ethereum/go-ethereum v1.13.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1

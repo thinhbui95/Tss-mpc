@@ -385,7 +385,8 @@ func testDistibutedSigning(typeFixtures string, message eth_common.Hash, thresho
 						verified := crypto.VerifySignature(publicKeyBytes, message.Bytes(), signatureNoRecoverID)
 						assert.True(nil, verified, "ecdsa verify must pass")
 
-						fmt.Println("Signature: ", hexutil.Encode(sig))
+						fmt.Println("Signature: ", sig)
+
 						fmt.Println("address: ", eth_common.BytesToAddress(crypto.Keccak256(publicKeyBytes[1:])[12:]).Hex())
 						fmt.Println("ECDSA signing test done.")
 

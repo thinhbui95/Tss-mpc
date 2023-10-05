@@ -27,7 +27,7 @@ type (
 		*tss.BaseParty
 		params *tss.Parameters
 
-		temp localTempData
+		Temp localTempData
 		data LocalPartySaveData
 
 		// outbound messaging
@@ -78,23 +78,23 @@ func NewLocalParty(
 	p := &LocalParty{
 		BaseParty: new(tss.BaseParty),
 		params:    params,
-		temp:      localTempData{},
+		Temp:      localTempData{},
 		data:      data,
 		out:       out,
 		end:       end,
 	}
 	// msgs init
-	p.temp.kgRound1Messages = make([]tss.ParsedMessage, partyCount)
-	p.temp.kgRound2Message1s = make([]tss.ParsedMessage, partyCount)
-	p.temp.kgRound2Message2s = make([]tss.ParsedMessage, partyCount)
-	p.temp.kgRound3Messages = make([]tss.ParsedMessage, partyCount)
+	p.Temp.kgRound1Messages = make([]tss.ParsedMessage, partyCount)
+	p.Temp.kgRound2Message1s = make([]tss.ParsedMessage, partyCount)
+	p.Temp.kgRound2Message2s = make([]tss.ParsedMessage, partyCount)
+	p.Temp.kgRound3Messages = make([]tss.ParsedMessage, partyCount)
 	// temp data init
-	p.temp.KGCs = make([]cmt.HashCommitment, partyCount)
+	p.Temp.KGCs = make([]cmt.HashCommitment, partyCount)
 	return p
 }
 
 func (p *LocalParty) FirstRound() tss.Round {
-	return newRound1(p.params, &p.data, &p.temp, p.out, p.end)
+	return newRound1(p.params, &p.data, &p.Temp, p.out, p.end)
 }
 
 func (p *LocalParty) Start() *tss.Error {
@@ -136,13 +136,13 @@ func (p *LocalParty) StoreMessage(msg tss.ParsedMessage) (bool, *tss.Error) {
 	// this does not handle message replays. we expect the caller to apply replay and spoofing protection.
 	switch msg.Content().(type) {
 	case *KGRound1Message:
-		p.temp.kgRound1Messages[fromPIdx] = msg
+		p.Temp.kgRound1Messages[fromPIdx] = msg
 	case *KGRound2Message1:
-		p.temp.kgRound2Message1s[fromPIdx] = msg
+		p.Temp.kgRound2Message1s[fromPIdx] = msg
 	case *KGRound2Message2:
-		p.temp.kgRound2Message2s[fromPIdx] = msg
+		p.Temp.kgRound2Message2s[fromPIdx] = msg
 	case *KGRound3Message:
-		p.temp.kgRound3Messages[fromPIdx] = msg
+		p.Temp.kgRound3Messages[fromPIdx] = msg
 	default: // unrecognised message, just ignore!
 		common.Logger.Warningf("unrecognised message ignored: %v", msg)
 		return false, nil

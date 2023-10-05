@@ -29,7 +29,7 @@ type (
 		params *tss.Parameters
 
 		keys keygen.LocalPartySaveData
-		temp localTempData
+		Temp localTempData
 		data *common.SignatureData
 
 		// outbound messaging
@@ -77,24 +77,28 @@ func NewLocalParty(
 		BaseParty: new(tss.BaseParty),
 		params:    params,
 		keys:      keygen.BuildLocalSaveDataSubset(key, params.Parties().IDs()),
-		temp:      localTempData{},
+		Temp:      localTempData{},
 		data:      &common.SignatureData{},
 		out:       out,
 		end:       end,
 	}
 	// msgs init
-	p.temp.signRound1Messages = make([]tss.ParsedMessage, partyCount)
-	p.temp.signRound2Messages = make([]tss.ParsedMessage, partyCount)
-	p.temp.signRound3Messages = make([]tss.ParsedMessage, partyCount)
+	p.Temp.signRound1Messages = make([]tss.ParsedMessage, partyCount)
+	p.Temp.signRound2Messages = make([]tss.ParsedMessage, partyCount)
+	p.Temp.signRound3Messages = make([]tss.ParsedMessage, partyCount)
 
 	// temp data init
-	p.temp.m = msg
-	p.temp.cjs = make([]*big.Int, partyCount)
+	p.Temp.m = msg
+	p.Temp.cjs = make([]*big.Int, partyCount)
 	return p
 }
 
 func (p *LocalParty) FirstRound() tss.Round {
-	return newRound1(p.params, &p.keys, p.data, &p.temp, p.out, p.end)
+	return newRound1(p.params, &p.keys, p.data, &p.Temp, p.out, p.end)
+}
+
+func (p LocalParty) GetSignature() []byte {
+	return p.data.Signature
 }
 
 func (p *LocalParty) Start() *tss.Error {
@@ -145,13 +149,13 @@ func (p *LocalParty) StoreMessage(msg tss.ParsedMessage) (bool, *tss.Error) {
 	// this does not handle message replays. we expect the caller to apply replay and spoofing protection.
 	switch msg.Content().(type) {
 	case *SignRound1Message:
-		p.temp.signRound1Messages[fromPIdx] = msg
+		p.Temp.signRound1Messages[fromPIdx] = msg
 
 	case *SignRound2Message:
-		p.temp.signRound2Messages[fromPIdx] = msg
+		p.Temp.signRound2Messages[fromPIdx] = msg
 
 	case *SignRound3Message:
-		p.temp.signRound3Messages[fromPIdx] = msg
+		p.Temp.signRound3Messages[fromPIdx] = msg
 
 	default: // unrecognised message, just ignore!
 		common.Logger.Warningf("unrecognised message ignored: %v", msg)
@@ -166,4 +170,8 @@ func (p *LocalParty) PartyID() *tss.PartyID {
 
 func (p *LocalParty) String() string {
 	return fmt.Sprintf("id: %s, %s", p.PartyID(), p.BaseParty.String())
+}
+
+func (p localTempData) GetData() (*big.Int, *[32]byte) {
+	return p.r, p.si
 }

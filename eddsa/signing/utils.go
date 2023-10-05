@@ -29,6 +29,10 @@ func encodedBytesToBigInt(s *[32]byte) *big.Int {
 	return bi
 }
 
+func EncodedBytesToBigInt(s *[32]byte) *big.Int {
+	return encodedBytesToBigInt(s)
+}
+
 func bigIntToEncodedBytes(a *big.Int) *[32]byte {
 	s := new([32]byte)
 	if a == nil {
@@ -43,6 +47,10 @@ func bigIntToEncodedBytes(a *big.Int) *[32]byte {
 	reverse(s)
 
 	return s
+}
+
+func BigIntToEncodedBytes(a *big.Int) *[32]byte {
+	return bigIntToEncodedBytes(a)
 }
 
 func copyBytes(aB []byte) *[32]byte {
